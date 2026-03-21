@@ -23,26 +23,30 @@ The user is learning web development by following the official Next.js Dashboard
 - **Conceptual**: Babel compilation pipeline, React as abstraction over DOM APIs, server components don't ship JS, `??` vs `||`
 
 ## Current project status
-- **Stage**: Chapter 4 — Creating Layouts and Pages (completed)
+- **Stage**: Chapter 7 — Fetching Data (completed)
 - **Framework**: Next.js (latest), React (latest), TypeScript, Tailwind CSS
 - **New for this project**: TypeScript (`.tsx` files), Tailwind CSS, postgres, bcrypt, next-auth, zod
-- **What exists**: Landing page, root layout with Inter font, dashboard layout with SideNav, three dashboard pages (home, invoices, customers — placeholder content), pre-built UI components in `app/ui/`, data layer in `app/lib/`, seed route
+- **Deployment**: Vercel (auto-deploys from GitHub `main` branch), Postgres database hosted in cloud (Neon/Supabase via Vercel)
+- **What exists**: Landing page, root layout with Inter font, dashboard layout with SideNav, dashboard page with live data (revenue chart, latest invoices, summary cards), two placeholder pages (invoices, customers), pre-built UI components in `app/ui/`, data layer in `app/lib/`, seeded database with all four tables populated
 - **Routes**: `/` (landing), `/dashboard`, `/dashboard/invoices`, `/dashboard/customers`
 - **Pre-built UI components**: Dashboard (sidenav, nav-links, revenue-chart, cards, latest-invoices), Invoices (table, create/edit forms, pagination, buttons, breadcrumbs, status), Customers (table), search, skeletons, login-form, button, acme-logo
 
 ## Quiz progress
-- 210 questions across 21 rounds (130 from React Foundations + 80 in this project)
-- Score trend: 5.5 -> 5 -> 5.5 -> 7 -> 6.5 -> 6 -> 5.5 -> 8 -> 6 -> 5.5 -> 7 -> 6 -> 7.5 -> 4.5 -> 6.5 -> 6 -> 6.5 -> 7.5 -> 9 -> 7.5 -> 7.5
+- 240 questions across 24 rounds (130 from React Foundations + 110 in this project)
+- Score trend: 5.5 -> 5 -> 5.5 -> 7 -> 6.5 -> 6 -> 5.5 -> 8 -> 6 -> 5.5 -> 7 -> 6 -> 7.5 -> 4.5 -> 6.5 -> 6 -> 6.5 -> 7.5 -> 9 -> 7.5 -> 7.5 -> 9.5 -> 5 -> 6
 - Round 14: 4.5/10 (high-level architecture — first round in new project, many new concepts)
 - Round 15: 6.5/10 (architecture deep dive — data layer, SQL, server-side patterns)
 - Round 16: 6/10 (system architecture — database design, data flow, Next.js patterns)
 - Round 17: 6.5/10 (components, forms, user journey — strong on Express-overlapping concepts)
 - Round 18: 7.5/10 (CSS styling — Tailwind, CSS Modules, clsx)
-- Round 19: 9/10 (all-encompassing review) — personal best
+- Round 19: 9/10 (all-encompassing review)
 - Round 20: 7.5/10 (all-encompassing review)
 - Round 21: 7.5/10 (layouts and routes — strong on nesting/scoping, gaps in Tailwind layout utilities)
+- Round 22: 9.5/10 (database setup & deployment — new personal best)
+- Round 23: 5/10 (data fetching — new chapter, many new concepts: promises, TypeScript generics, waterfall problem)
+- Round 24: 6/10 (data fetching reinforcement — waterfall/parallel solid, gaps in client vs server async, Promise.all vs transactions)
 
-### Topics now understood (from Rounds 14-21):
+### Topics now understood (from Rounds 14-24):
 - Four data entities: users (login), customers (invoiced), invoices, revenue — separate tables for separate roles
 - `route.ts` with exported `GET`/`POST` creates API routes at that path
 - File-based routing requires `page.tsx` — `ui/` folder is just component organization, not routes
@@ -95,8 +99,22 @@ The user is learning web development by following the official Next.js Dashboard
 - **`flex-none`**: Prevents element from growing or shrinking in flexbox — SideNav stays fixed at `w-64` (256px)
 - **`overflow-hidden` + `overflow-y-auto`**: Parent clips to viewport (no page scroll), child content area scrolls independently — keeps SideNav fixed in place
 - **Component libraries**: Most devs use pre-made components (shadcn/ui, MUI, Chakra) and customize — building from scratch is for learning
+- **Deployment architecture**: Local app + Vercel app are separate instances, connected by GitHub (code) and the same cloud database (data)
+- **Cloud database**: Accessible from anywhere with credentials — both local and deployed app connect independently
+- **Region colocation**: Database and app in same region (D.C.) reduces query latency
+- **CI/CD**: CI = automated tests/checks before deploy, CD = automatic deployment on push. This project has CD only (Vercel auto-deploys)
+- **GitHub as bridge**: If GitHub goes down, local dev works, deployed app keeps running, but can't push or auto-deploy
+- **Empty database needs setup**: `CREATE TABLE` defines structure, `INSERT` populates data — new databases have nothing
+- **Sequential awaits = waterfall**: Each `await` blocks the next — independent queries should run in parallel
+- **SQL COUNT returns strings**: Need `Number()` to convert for JavaScript use
+- **SQL can't run JS functions**: Data transformation (e.g., `formatCurrency`) must happen in JS after the query returns
+- **Data functions in shared files for reusability**: `app/lib/data.ts` lets multiple pages import the same fetch functions
+- **Waterfall = sequential awaits**: Total time = sum of all queries; parallel = total time is slowest query
+- **Rewriting waterfall to parallel**: Use `Promise.all` with array destructuring to await all fetches concurrently
+- **`data[0][0].count`**: First `[0]` = first promise result from `Promise.all`, second `[0]` = first row of SQL result (SQL always returns array of rows)
+- **Blank page during slow fetch**: Sequential awaits in page component block all rendering until every query finishes
 
-### Topics that need revisiting (from Rounds 14-21):
+### Topics that need revisiting (from Rounds 14-23):
 - **TypeScript `!` (non-null assertion)**: Tells TS "trust me, this won't be null" — compile-time only, no runtime effect
 - **TypeScript union types**: `'pending' | 'paid'` restricts to specific values — TS feature, not Next.js
 - **Tagged template literals**: `sql\`...\`` calls `sql` as a function with template parts — not just regular template literals
@@ -113,6 +131,16 @@ The user is learning web development by following the official Next.js Dashboard
 - **Server sets invoice date**: Server Action generates the date, not user input — prevents backdating
 - **`<Image>` benefits too vague**: Need to name specific features (optimization, lazy loading, layout shift prevention) not just "extra features"
 - **Server components fetch data directly**: Understood in discussion but missed on quiz — the component itself is async and calls data functions, no route handler middleman
+- **`async` on server components**: Needed so the function can use `await` for data fetching — only server components can be async (client components must stay responsive for re-renders)
+- **Promises fire immediately**: `sql\`...\`` sends the query and returns a promise right away — `Promise.all` doesn't start them, it waits for them to finish
+- **`Promise.all` as checkpoint**: Waits for all promises to resolve before continuing — doesn't cause parallelism, just collects results
+- **TypeScript generics (`sql<Revenue[]>`)**: Type hint telling TS what shape the returned data will be — no runtime effect, just compile-time checking
+- **TypeScript prop typing**: `{ revenue }: { revenue: Revenue[] }` — left side destructures props, right side declares their types
+- **Waterfall blocks entire page**: Sequential `await`s in page component mean nothing renders until all data is ready — user sees blank page
+- **Client components can't be async**: They need to return JSX immediately for re-renders and interactivity — `async` would pause the function, blocking the UI. Server components run once and are done, so pausing is fine
+- **`Promise.all` fails fast**: Rejects immediately if any promise fails, but successful queries already ran and their effects stay. `sql.begin` rolls back all queries if any fail — true "all or nothing"
+- **TypeScript generics get stripped**: `sql<Revenue[]>` is erased entirely at compile time — the compiled JS has no angle brackets, just `sql\`...\``
+- **Page fetching for children is a weakness**: Consolidating all fetches in the page creates waterfall — better pattern is each component fetching its own data (Suspense)
 
 ### Needs revisiting (carried from React Foundations):
 - Duplicate keys (rendering bugs vs errors)
