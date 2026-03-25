@@ -23,17 +23,17 @@ The user is learning web development by following the official Next.js Dashboard
 - **Conceptual**: Babel compilation pipeline, React as abstraction over DOM APIs, server components don't ship JS, `??` vs `||`
 
 ## Current project status
-- **Stage**: Chapter 7 — Fetching Data (completed)
+- **Stage**: Chapter 11 — Mutating Data (completed)
 - **Framework**: Next.js (latest), React (latest), TypeScript, Tailwind CSS
 - **New for this project**: TypeScript (`.tsx` files), Tailwind CSS, postgres, bcrypt, next-auth, zod
 - **Deployment**: Vercel (auto-deploys from GitHub `main` branch), Postgres database hosted in cloud (Neon/Supabase via Vercel)
-- **What exists**: Landing page, root layout with Inter font, dashboard layout with SideNav, dashboard page with live data (revenue chart, latest invoices, summary cards), two placeholder pages (invoices, customers), pre-built UI components in `app/ui/`, data layer in `app/lib/`, seeded database with all four tables populated
-- **Routes**: `/` (landing), `/dashboard`, `/dashboard/invoices`, `/dashboard/customers`
+- **What exists**: Landing page, root layout with Inter font, dashboard layout with SideNav, dashboard page with streaming (Suspense boundaries around revenue chart, latest invoices, and cards), `loading.tsx` with skeleton in `(overview)` route group, invoices page with search/pagination/table and full CRUD (create/edit/delete via Server Actions), Zod validation in actions, one placeholder page (customers), data layer in `app/lib/` (data.ts for fetching, actions.ts for mutations), seeded database with all four tables populated
+- **Routes**: `/` (landing), `/dashboard`, `/dashboard/invoices`, `/dashboard/invoices/create`, `/dashboard/invoices/[id]/edit`, `/dashboard/customers`
 - **Pre-built UI components**: Dashboard (sidenav, nav-links, revenue-chart, cards, latest-invoices), Invoices (table, create/edit forms, pagination, buttons, breadcrumbs, status), Customers (table), search, skeletons, login-form, button, acme-logo
 
 ## Quiz progress
-- 240 questions across 24 rounds (130 from React Foundations + 110 in this project)
-- Score trend: 5.5 -> 5 -> 5.5 -> 7 -> 6.5 -> 6 -> 5.5 -> 8 -> 6 -> 5.5 -> 7 -> 6 -> 7.5 -> 4.5 -> 6.5 -> 6 -> 6.5 -> 7.5 -> 9 -> 7.5 -> 7.5 -> 9.5 -> 5 -> 6
+- 341 questions across 29 rounds (130 from React Foundations + 211 in this project)
+- Score trend: 5.5 -> 5 -> 5.5 -> 7 -> 6.5 -> 6 -> 5.5 -> 8 -> 6 -> 5.5 -> 7 -> 6 -> 7.5 -> 4.5 -> 6.5 -> 6 -> 6.5 -> 7.5 -> 9 -> 7.5 -> 7.5 -> 9.5 -> 5 -> 6 -> 7.5 -> 5.25 -> 6.375 -> 6.5 -> 6.75
 - Round 14: 4.5/10 (high-level architecture — first round in new project, many new concepts)
 - Round 15: 6.5/10 (architecture deep dive — data layer, SQL, server-side patterns)
 - Round 16: 6/10 (system architecture — database design, data flow, Next.js patterns)
@@ -45,8 +45,13 @@ The user is learning web development by following the official Next.js Dashboard
 - Round 22: 9.5/10 (database setup & deployment — new personal best)
 - Round 23: 5/10 (data fetching — new chapter, many new concepts: promises, TypeScript generics, waterfall problem)
 - Round 24: 6/10 (data fetching reinforcement — waterfall/parallel solid, gaps in client vs server async, Promise.all vs transactions)
+- Round 25: 7.5/10 (streaming & Suspense — strong on architecture/streaming concepts, gaps in Suspense mechanics)
+- Round 26: 5.25/10 (search & pagination — 20 hard questions; strong on SQL/database side, gaps in URL mechanics and client-side patterns)
+- Round 27: 6.375/10 (full revisit round — 41 questions covering all "needs revisiting" items; strong on SQL/database, React fundamentals, URL params; gaps in TypeScript features, controlled vs uncontrolled inputs, replace vs push, bcrypt)
+- Round 28: 6.5/10 (mutating data — Chapter 11; solid on Zod, revalidatePath/redirect, dynamic routes, FormData, progressive enhancement; gaps in Server Actions vs server components, .bind() pattern, server-generated fields, form client component reasoning)
+- Round 29: 6.75/10 (mutation architecture — strong on practical flow decisions: redirect logic, page/form split, data needs; tendency to default to "reduces complexity" instead of naming specific benefits like security, reusability, framework integration)
 
-### Topics now understood (from Rounds 14-24):
+### Topics now understood (from Rounds 14-29):
 - Four data entities: users (login), customers (invoiced), invoices, revenue — separate tables for separate roles
 - `route.ts` with exported `GET`/`POST` creates API routes at that path
 - File-based routing requires `page.tsx` — `ui/` folder is just component organization, not routes
@@ -113,42 +118,89 @@ The user is learning web development by following the official Next.js Dashboard
 - **Rewriting waterfall to parallel**: Use `Promise.all` with array destructuring to await all fetches concurrently
 - **`data[0][0].count`**: First `[0]` = first promise result from `Promise.all`, second `[0]` = first row of SQL result (SQL always returns array of rows)
 - **Blank page during slow fetch**: Sequential awaits in page component block all rendering until every query finishes
+- **`loading.tsx`**: Next.js convention — automatically wraps page in Suspense boundary with the exported component as fallback
+- **`<Suspense>`**: Wraps individual components — shows `fallback` skeleton while async component inside loads, swaps in real content when ready
+- **`loading.tsx` vs `<Suspense>`**: `loading.tsx` = whole page loading state, `<Suspense>` = fine-grained per-component loading
+- **Route groups `(name)`**: Parenthesized folders are invisible to URL, scope special files like `loading.tsx` to only pages inside. Name can be anything
+- **Streaming**: Server sends HTML chunks as each Suspense boundary resolves — user sees content progressively instead of waiting for everything
+- **Components fetch their own data**: Each component calls its own fetch function, wrapped in Suspense — loads independently instead of waterfall
+- **Next.js special files**: `page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx`, `not-found.tsx`, `route.ts`, `middleware.ts`
+- **Skeletons prevent layout shift**: Match the shape/grid of real content so the page doesn't jump when data swaps in
+- **Expressions vs statements in JSX**: Curly braces `{}` in JSX only allow expressions (produce a value), not statements like `const x = ...` or `await`
+- **TypeScript union types**: `'pending' | 'paid'` restricts to specific values — TS feature, not Next.js (confirmed Round 27)
+- **`ILIKE` vs `LIKE`**: `ILIKE` is case-insensitive, PostgreSQL-specific (confirmed Round 27)
+- **Search/pagination state in URL params**: Not React state — URL is bookmarkable, shareable, survives refresh, server-readable (confirmed Round 27)
+- **Server sets invoice date**: Server Action generates the date, not user input — prevents backdating (confirmed Round 27)
+- **Promises fire immediately**: `sql\`...\`` sends the query and returns a promise right away — `Promise.all` doesn't start them, it waits for them to finish (confirmed Round 27)
+- **TypeScript prop typing**: `{ revenue }: { revenue: Revenue[] }` — left side destructures props, right side declares their types (confirmed Round 27)
+- **`Promise.all` fails fast**: Rejects immediately if any promise fails, but successful queries already ran and their effects stay. `sql.begin` rolls back all queries if any fail (confirmed Round 27)
+- **Page fetching for children is a weakness**: Consolidating all fetches in the page creates waterfall — better pattern is each component fetching its own data (Suspense) (confirmed Round 27)
+- **Suspense doesn't make functions complete faster**: It shows a fallback while the component loads — the async work takes the same time (confirmed Round 27)
+- **Suspense needs a component**: Can't wrap raw JS/fetch calls in Suspense — the fetching must happen inside the component that Suspense wraps (confirmed Round 27)
+- **`new URLSearchParams(searchParams)`**: Creates mutable copy — `useSearchParams()` returns read-only params (confirmed Round 27)
+- **Non-clickable pagination items**: Active page and `...` ellipsis render as `<div>` not `<Link>` — nothing to navigate to (confirmed Round 27)
+- **Search resets page to 1**: New search might have fewer results — requesting old page number could return nothing (confirmed Round 27)
+- **Pagination offset formula**: `(currentPage - 1) * ITEMS_PER_PAGE` — database returns only the slice of rows needed (confirmed Round 27)
+- **`useSearchParams`/`usePathname`/`useRouter`**: Client-side hooks for reading URL params, path, and navigating (confirmed Round 27)
+- **Search component is client, Table is server**: Search handles user input (needs hooks), Table fetches from database (needs server) (confirmed Round 27)
+- **SQL filtering with `ILIKE`**: Database does the filtering, not JavaScript — searches across multiple columns with `OR` (confirmed Round 27)
+- **Unused props silently ignored**: No error, no warning — props just get ignored (confirmed Round 27)
+- **Lifting state up**: Parent passes setter function as prop to child — child calls it, doesn't import it (confirmed Round 27)
+- **Expressions vs statements in JSX (React Foundations)**: Expressions evaluate to a value (allowed in `{}`), statements don't (not allowed) (confirmed Round 27)
+- **Duplicate keys**: Console warning not error — causes rendering bugs (wrong items update, reorder, lose state) (confirmed Round 27)
+- **Zod validation**: Validates and coerces form data (strings to correct types) before database operations — server-side validation (confirmed Round 28)
+- **`revalidatePath`**: Clears cached page data after mutations so fresh data shows on next request (confirmed Round 28)
+- **`redirect` after revalidation**: Called after `revalidatePath` so user lands on page with fresh data, not stale cache (confirmed Round 28)
+- **Dynamic routes `[id]`**: Bracket folders create dynamic route segments — different IDs hit same page component (confirmed Round 28)
+- **Zod `.omit()` for server-generated fields**: `CreateInvoice` omits `id` (database generates) and `date` (server generates) from validation schema (confirmed Round 28)
+- **`formData.get('fieldName')`**: Extracts individual values from FormData, field name matches input's `name` attribute (confirmed Round 28)
+- **Delete action has no redirect**: User is already on invoices list — just revalidate to refresh data in place (confirmed Round 28)
+- **`'use server'` file-level vs function-level**: File-level marks all exported functions as Server Actions; function-level marks only that function (confirmed Round 28)
+- **Progressive enhancement**: Forms with Server Actions work without JavaScript — native HTML form submission sends POST, Server Action still processes it (confirmed Round 28)
+- **Server page + client form split**: Pages are server components (fetch data from DB), forms are client components (need interactivity) — each uses the rendering mode it needs (confirmed Round 29)
+- **Redirect depends on current route**: Delete = no redirect (already on list page), create/update = redirect (on separate pages that need to be left) (confirmed Round 29)
+- **`revalidatePath` + `redirect` are both needed**: `redirect` alone lands on stale cached page — `revalidatePath` invalidates cache first (confirmed Round 29)
+- **Edit page fetches customers list**: Customer select dropdown needs all customers as options so user can change the invoice's customer (confirmed Round 29)
 
-### Topics that need revisiting (from Rounds 14-23):
-- **TypeScript `!` (non-null assertion)**: Tells TS "trust me, this won't be null" — compile-time only, no runtime effect
-- **TypeScript union types**: `'pending' | 'paid'` restricts to specific values — TS feature, not Next.js
-- **Tagged template literals**: `sql\`...\`` calls `sql` as a function with template parts — not just regular template literals
-- **Skeletons = loading placeholders**: Show page structure during data fetch for perceived performance, not for showcasing capabilities
-- **`ILIKE` vs `LIKE`**: `ILIKE` is case-insensitive (PostgreSQL-specific)
-- **Raw SQL vs ORM disadvantage**: Portability and maintenance, not manual sanitization — tagged template literals auto-parameterize
-- **Seed route using GET is a shortcut**: Writing data should be POST; tutorial uses GET for browser convenience
-- **bcrypt salt rounds**: The `10` = cost factor (2^10 iterations), not password length
-- **Search/pagination state in URL params**: Not React state — URL is bookmarkable, shareable, survives refresh, server-readable
-- **Nested layouts**: Dashboard layout nests *inside* root layout (not extends) — layouts stack like nesting dolls
-- **Middleware for auth**: `middleware.ts` at project root intercepts every request — not per-page checks (like Express `app.use(authCheck)`)
-- **`Omit<Type, 'field'>` utility**: TypeScript built-in — copies a type minus specified fields
-- **Dynamic nav links in database**: For permission-based navigation (different users see different links), not for displaying data on hover
-- **Server sets invoice date**: Server Action generates the date, not user input — prevents backdating
-- **`<Image>` benefits too vague**: Need to name specific features (optimization, lazy loading, layout shift prevention) not just "extra features"
-- **Server components fetch data directly**: Understood in discussion but missed on quiz — the component itself is async and calls data functions, no route handler middleman
-- **`async` on server components**: Needed so the function can use `await` for data fetching — only server components can be async (client components must stay responsive for re-renders)
-- **Promises fire immediately**: `sql\`...\`` sends the query and returns a promise right away — `Promise.all` doesn't start them, it waits for them to finish
-- **`Promise.all` as checkpoint**: Waits for all promises to resolve before continuing — doesn't cause parallelism, just collects results
-- **TypeScript generics (`sql<Revenue[]>`)**: Type hint telling TS what shape the returned data will be — no runtime effect, just compile-time checking
-- **TypeScript prop typing**: `{ revenue }: { revenue: Revenue[] }` — left side destructures props, right side declares their types
-- **Waterfall blocks entire page**: Sequential `await`s in page component mean nothing renders until all data is ready — user sees blank page
-- **Client components can't be async**: They need to return JSX immediately for re-renders and interactivity — `async` would pause the function, blocking the UI. Server components run once and are done, so pausing is fine
-- **`Promise.all` fails fast**: Rejects immediately if any promise fails, but successful queries already ran and their effects stay. `sql.begin` rolls back all queries if any fail — true "all or nothing"
-- **TypeScript generics get stripped**: `sql<Revenue[]>` is erased entirely at compile time — the compiled JS has no angle brackets, just `sql\`...\``
-- **Page fetching for children is a weakness**: Consolidating all fetches in the page creates waterfall — better pattern is each component fetching its own data (Suspense)
+### Topics that need revisiting (from Rounds 14-29):
+- **TypeScript `!` (non-null assertion)**: Tells TS "trust me, this won't be null" — compile-time only, **zero runtime effect** (no protection if actually null). Partially known Round 27
+- **Tagged template literals**: `sql\`...\`` calls `sql` as a **JavaScript function** with template parts — not just regular template literals. The function handles parameterization and sends query. Partially known Round 27
+- **Skeletons = loading placeholders**: Show page structure during data fetch for **perceived performance**, not decoration. Partially known Round 27
+- **Raw SQL vs ORM disadvantage**: **Portability and maintenance**, not injection risk — tagged template literals auto-parameterize. Missed Round 27
+- **Seed route using GET is a shortcut**: Writing data should be POST (HTTP semantics); tutorial uses GET for browser convenience. Partially known Round 27
+- **bcrypt salt rounds**: The `10` = **cost factor** (2^10 iterations), not password length or character count. Missed Round 27
+- **Nested layouts**: Dashboard layout nests *inside* root layout — layouts **stack like nesting dolls**, each adds its piece. Partially known Round 27
+- **Middleware for auth**: `middleware.ts` at project root intercepts every request — not per-page checks (like Express `app.use(authCheck)`). Skipped Round 27 (not yet built)
+- **`Omit<Type, 'field'>` utility**: TypeScript built-in — **copies a type minus specified fields**, doesn't bypass restrictions. Missed Round 27
+- **Dynamic nav links in database**: For **permission-based navigation** (different users see different links), not just dynamic updates. Partially known Round 27
+- **`<Image>` benefits**: Auto-optimization (compression, WebP), lazy loading, layout shift prevention — name specific features. Partially known Round 27
+- **Client components can't be async**: Must return JSX **immediately** for re-renders — `async` would pause the function, blocking the UI. Server components run once, so pausing is fine. Partially known Round 27
+- **TypeScript generics (`sql<Revenue[]>`)**: **Compile-time type hint** telling TS the data shape — completely stripped at runtime, no effect on actual data. Missed Round 27
+- **Waterfall blocks entire page**: The **page function itself** can't return any JSX until all `await`s finish — it's the page that's blocked, not child components blocking upward. Partially known Round 27
+- **`replace` vs `push`**: About **browser history**, not performance — `replace` swaps current entry (no back-button clutter), `push` adds new entry. Search uses `replace`. Missed Round 27
+- **`defaultValue` vs `value`**: About **control**, not performance — `defaultValue` = uncontrolled (browser manages), `value` = controlled (React manages, needs `useState`). Missed Round 27
+- **Suspense `key` prop**: Changing the key destroys and remounts the component — triggers fallback skeleton for new search/page
+- **`fetchInvoicesPages` not in Suspense**: Fast `COUNT(*)` query awaited directly; slow table fetch wrapped in Suspense — tradeoff based on **query speed**. Partially known Round 27
+- **Debouncing**: Each keystroke **resets the timer** — fires after a pause (300ms) of no input, not a fixed delay from first keystroke. Partially known Round 27
+- **Full search/pagination data flow**: User types → debounce → URL updates → server re-renders → SQL queries with params → components re-render
+- **`'use server'` vs default server code**: Default server code runs during rendering. `'use server'` creates a **callable endpoint** that client components can invoke (via forms). Without it, client components can't trigger server functions. Missed Round 28
+- **Server Actions vs server components**: Server components = reading/rendering, Server Actions = writing/mutating. Actions are the POST/PUT/DELETE handlers, components are the GET handlers. Form → Server Action directly, no API route middleman. Missed Round 28
+- **`.bind(null, id)` pattern**: Pre-fills first argument into a Server Action when the data isn't in the form (e.g., ID from URL/props, not user input). `null` is for `this` context. Missed Round 28
+- **Server-generated invoice date**: `new Date().toISOString().split('T')[0]` in the Server Action — not from form or page. Prevents backdating. Missed Round 28
+- **Why forms are client components**: Need interactivity (inputs, selects, radio buttons respond to user events) — not about URL manipulation. The Server Action runs on server, but the form UI needs client-side interactivity. Missed Round 28
+- **`.bind()` vs hidden form fields**: `.bind()` keeps ID out of DOM HTML (encrypted by Next.js), hidden fields are visible in source and editable via devtools. Partially known Round 28
+- **Amount conversion two steps**: Zod `.coerce.number()` converts string → number, then `amount * 100` converts dollars → cents. Partially known Round 28
+- **Server Actions eliminate two layers**: No API route definition and no client-side fetch needed — form `action` connects directly to server function. Express needs route + controller + client fetch; Next.js needs just the Server Action. Missed Round 29
+- **Server-only execution = security**: SQL queries, database credentials, business logic never ship to browser bundle — client just submits data. Not just "reduces complexity." Missed Round 29
+- **Client-side validation is bypassable**: Users can skip via devtools or raw requests — server-side validation (Zod in Server Action) is the security gate. Best practice is both: client for UX, server for security. Partially known Round 29
+- **Amount stored in cents to avoid floating point errors**: Not just "simple conversion" — integers prevent precision bugs (e.g., `0.1 + 0.2 !== 0.3`). Partially known Round 29
+- **`<form action>` = framework-managed pipeline**: Next.js handles submission, server invocation, error handling, revalidation as one system — with `onSubmit` + `fetch` you'd DIY all of that. Not just "less complexity." Partially known Round 29
+- **Separating reads/writes into different files**: Separation of concerns (different triggers), reusability (multiple pages import same functions), security clarity (`'use server'` = callable from client, `data.ts` = rendering only). Partially known Round 29
+- **Tendency to answer "reduces complexity"**: Name the *specific* benefit — security, reusability, framework integration, etc. "Reduces complexity" is usually true but rarely the full answer. Feedback from Round 29
 
 ### Needs revisiting (carried from React Foundations):
-- Duplicate keys (rendering bugs vs errors)
-- Expressions vs statements in JSX
-- Unused props silently ignored
-- Props object always `{}` not `undefined`
-- Hooks call order (why no conditionals)
-- Lifting state up (pass setter as prop not import)
+- Props object always `{}` not `undefined` — partially known Round 27 (knew it works, didn't know it's `{}`)
+- Hooks call order (why no conditionals) — React tracks hooks by **call order**, conditionals could skip a hook and shift the order. Missed Round 27
 - Reconciliation (virtual DOM diffing)
 - State updates as const snapshots (not DOM reads)
 - `useState()` with no arg = `undefined`
