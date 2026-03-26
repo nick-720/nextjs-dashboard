@@ -23,12 +23,11 @@ The user is learning web development by following the official Next.js Dashboard
 - **Conceptual**: Babel compilation pipeline, React as abstraction over DOM APIs, server components don't ship JS, `??` vs `||`
 
 ## Current project status
-- **Stage**: Chapter 12 — Error Handling (completed)
+- **Stage**: Chapter 13 — Improving Accessibility / Form Validation (completed), starting Chapter 14 (Auth)
 - **Framework**: Next.js (latest), React (latest), TypeScript, Tailwind CSS
 - **New for this project**: TypeScript (`.tsx` files), Tailwind CSS, postgres, bcrypt, next-auth, zod
-- **Deployment**: Vercel (auto-deploys from GitHub `main` branch), Postgres database hosted in cloud (Neon/Supabase via Vercel)
-- **What exists**: Landing page, root layout with Inter font, dashboard layout with SideNav, dashboard page with streaming (Suspense boundaries around revenue chart, latest invoices, and cards), `loading.tsx` with skeleton in `(overview)` route group, invoices page with search/pagination/table and full CRUD (create/edit/delete via Server Actions), Zod validation in actions, error handling (`error.tsx` boundary + `not-found.tsx` for edit page), try/catch in Server Actions, one placeholder page (customers), data layer in `app/lib/` (data.ts for fetching, actions.ts for mutations), seeded database with all four tables populated
-- **Known deployment issue**: `actions.ts` uses `return { message }` in catch blocks (from tutorial), but this causes a TypeScript build error on Vercel because form `action` expects `void` return. Will be fixed in Chapter 13 when `useActionState` is introduced — skip deploying until then
+- **Deployment**: Vercel (auto-deploys from GitHub `main` branch), Postgres database hosted in cloud (Neon/Supabase via Vercel), successfully deployed through Ch13
+- **What exists**: Landing page, root layout with Inter font, dashboard layout with SideNav, dashboard page with streaming (Suspense boundaries around revenue chart, latest invoices, and cards), `loading.tsx` with skeleton in `(overview)` route group, invoices page with search/pagination/table and full CRUD (create/edit/delete via Server Actions), Zod validation with `safeParse` and field-level error messages, `useActionState` in forms, `State` type for action return values, error handling (`error.tsx` boundary + `not-found.tsx` for edit page), try/catch in Server Actions, one placeholder page (customers), data layer in `app/lib/` (data.ts for fetching, actions.ts for mutations), seeded database with all four tables populated
 - **Routes**: `/` (landing), `/dashboard`, `/dashboard/invoices`, `/dashboard/invoices/create`, `/dashboard/invoices/[id]/edit`, `/dashboard/customers`
 - **Pre-built UI components**: Dashboard (sidenav, nav-links, revenue-chart, cards, latest-invoices), Invoices (table, create/edit forms, pagination, buttons, breadcrumbs, status), Customers (table), search, skeletons, login-form, button, acme-logo
 
